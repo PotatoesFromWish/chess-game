@@ -36,17 +36,8 @@ def load_sprites():
         cls.SPRITE = {}
         for color, path in cls.PATHS.items():
             img = Image.open(path)
-            img = img.resize((square_size, square_size))
             cls.SPRITE[color] = ImageTk.PhotoImage(img)
 
-
-
-LIGHT = "#EF93D7"
-DARK = "#00401A"
-HIGHLIGHT = "#AAD751"
-SELECTED = "#F6F669"
-
-square_size   = 150
 board_size = 8
 
 def make_board() -> list:
@@ -63,49 +54,79 @@ def make_board() -> list:
     return board
 
 
+class Game_square:
+    size = 600 // 8 
+    light_color = "#E1E18C"
+    dark_color = "#332121"
+    highlight_color = "#AAD751"
+    selected_color = "#F6F669"
+    in_check_color = "#FF0000"
+
+    def __init__(self):
+        self.label = ""
+
+    @classmethod
+    def update_size(cls, event):
+        cls.size = min(event.width, event.height) // 8
+    #def select_square():
+    
+
 class ChessGame:
     def __init__(self, root):
         self.root = root
         self.root.title("Chess")
         self.board = make_board()
-        self.selected = None    
+        self.selected = None
         self.valid_moves = []
         self.turn = "white"
 
-        size = square_size * board_size
-        self.canvas = tk.Canvas(root, width=size, height=size)
-        self.canvas.pack()
+        self.canvas = tk.Canvas(root)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
 
+        self.canvas.bind("<Configure>", self.on_resize)
 
+    def on_resize(self, event):
+        Game_square.update_size(event)
+        self.square_size = Game_square.size 
+        self.reload_sprites()
         self.draw_board()
+
+    def reload_sprites(self):
+        for cls in (Pawn, Bishop, Horse, Rook, Queen, King):
+            cls.SPRITE = {}
+            for color, path in cls.PATHS.items():
+                img = Image.open(path).resize(
+                    (self.square_size, self.square_size)
+                )
+                cls.SPRITE[color] = ImageTk.PhotoImage(img)
 
     def draw_board(self):
         self.canvas.delete("all")
         for row in range(board_size):
             for col in range(board_size):
-                x1, y1 = col * square_size  , row * square_size  
-                x2, y2 = x1 + square_size  , y1 + square_size  
+                x1, y1 = col * Game_square.size  , row * Game_square.size  
+                x2, y2 = x1 + Game_square.size  , y1 + Game_square.size  
 
                 if (row, col) == self.selected:
-                    color = SELECTED
+                    color = Game_square.selected_color
                 elif (row, col) in self.valid_moves:
-                    color = HIGHLIGHT
+                    color = Game_square.highlight_color
                 else:
-                    color = LIGHT if (row + col) % 2 == 0 else DARK
+                    color = Game_square.light_color if (row + col) % 2 == 0 else Game_square.dark_color
 
                 self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
 
                 piece = self.board[row][col]
                 if piece:
                     self.canvas.create_image(
-                    x1 + square_size // 2,
-                    y1 + square_size // 2,
+                    x1 + self.square_size // 2,
+                    y1 + self.square_size // 2,
                     image=piece.sprite,
     )
                     
                 
 if __name__ == "__main__":
     root = tk.Tk()
-    load_sprites() 
+    root.geometry("600x600")
     ChessGame(root)
     root.mainloop()
