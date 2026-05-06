@@ -56,7 +56,7 @@ class Game_square:
     light_color = "#EDE398"
     dark_color = "#431C07"
     highlight_color = "#AAD751"
-    selected_color = "#F6F669"
+    selected_color = "#4B9545"
     in_check_color = "#FF0000"
     files = "abcdefgh"
 
@@ -64,11 +64,14 @@ class Game_square:
         self.row = row
         self.col = col
         self.notation = self.files[col] + str(board_size - row)
-        self.hitbox = pygame.Rect(row, col, self.size, self.size)
 
     @classmethod
     def update_size(cls, width: int, height: int):
         cls.size = min(width, height) // board_size
+    
+    @property
+    def hitbox(self) -> pygame.Rect:
+        return pygame.Rect(self.col * self.size, self.row * self.size, self.size, self.size)
 
 
 class ChessGame:
@@ -172,6 +175,12 @@ def main():
                 )
                 game.screen = screen
                 game.on_resize(event.w, event.h)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                for row in game.squares:
+                    for sq in row:
+                        if sq.hitbox.collidepoint(event.pos):
+                            game.selected = (sq.row, sq.col)
+
 
         game.draw_board()
         clock.tick(60)
