@@ -1,5 +1,6 @@
-import tkinter as tk
-from PIL import Image, ImageTk
+import pygame
+from PIL import Image
+
 
 class Piece:
     SPRITE = {}
@@ -8,9 +9,9 @@ class Piece:
         self.color = color
 
     @property
-
-    def sprite(self) -> str:
+    def sprite(self) -> pygame.Surface:
         return self.SPRITE[self.color]
+
 
 class Pawn(Piece):
     PATHS = {"white": "assets/W_pawn.png", "black": "assets/B_pawn.png"}
@@ -31,12 +32,6 @@ class King(Piece):
     PATHS = {"white": "assets/W_king.png", "black": "assets/B_king.png"}
 
 
-def load_sprites():
-    for cls in (Pawn, Bishop, Horse, Rook, Queen, King):
-        cls.SPRITE = {}
-        for color, path in cls.PATHS.items():
-            img = Image.open(path)
-            cls.SPRITE[color] = ImageTk.PhotoImage(img)
 
 board_size = 8
 
@@ -54,79 +49,135 @@ def make_board() -> list:
     return board
 
 
+
 class Game_square:
-    size = 600 // 8 
-    light_color = "#E1E18C"
-    dark_color = "#332121"
+    size = 600 // board_size
+
+    light_color = "#EDE398"
+    dark_color = "#431C07"
     highlight_color = "#AAD751"
     selected_color = "#F6F669"
     in_check_color = "#FF0000"
+    files = "abcdefgh"
 
-    def __init__(self):
-        self.label = ""
+    def __init__(self, row: int, col: int):
+        self.row = row
+        self.col = col
+        self.notation = self.files[col] + str(board_size - row)
+        self.hitbox = pygame.Rect(row, col, self.size, self.size)
 
     @classmethod
-    def update_size(cls, event):
-        cls.size = min(event.width, event.height) // 8
-    #def select_square():
-    
+    def update_size(cls, width: int, height: int):
+        cls.size = min(width, height) // board_size
+
 
 class ChessGame:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Chess")
-        self.board = make_board()
-        self.selected = None
+    def __init__(self, screen: pygame.Surface):
+        self.screen = screen
+        self.board  = make_board()
+        self.selected    = None
         self.valid_moves = []
         self.turn = "white"
 
-        self.canvas = tk.Canvas(root)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        w, h = screen.get_size()
+        Game_square.update_size(w, h)
+        self.square_size = Game_square.size
 
-        self.canvas.bind("<Configure>", self.on_resize)
+        self.squares = [
+            [Game_square(row, col) for col in range(board_size)]
+            for row in range(board_size)
+        ]
 
-    def on_resize(self, event):
-        Game_square.update_size(event)
-        self.square_size = Game_square.size 
         self.reload_sprites()
-        self.draw_board()
+
+    def on_resize(self, width: int, height: int):
+        Game_square.update_size(width, height)
+        self.square_size = Game_square.size
+        self.reload_sprites()
 
     def reload_sprites(self):
+        sz = self.square_size
         for cls in (Pawn, Bishop, Horse, Rook, Queen, King):
             cls.SPRITE = {}
             for color, path in cls.PATHS.items():
-                img = Image.open(path).resize(
-                    (self.square_size, self.square_size)
-                )
-                cls.SPRITE[color] = ImageTk.PhotoImage(img)
+                pil_img = Image.open(path).resize((sz, sz)).convert("RGBA")
+
+                surface = pygame.image.fromstring(
+                    pil_img.tobytes(), pil_img.size, "RGBA"
+                ).convert_alpha()
+                cls.SPRITE[color] = surface
 
     def draw_board(self):
-        self.canvas.delete("all")
+        self.screen.fill((0, 0, 0))
+        sz   = Game_square.size
+        font = pygame.font.SysFont("Helvetica", max(board_size, sz // 6))
+
         for row in range(board_size):
             for col in range(board_size):
-                x1, y1 = col * Game_square.size  , row * Game_square.size  
-                x2, y2 = x1 + Game_square.size  , y1 + Game_square.size  
+                sq = self.squares[row][col]
+                x1, y1 = col * sz, row * sz
+                
 
                 if (row, col) == self.selected:
                     color = Game_square.selected_color
                 elif (row, col) in self.valid_moves:
                     color = Game_square.highlight_color
                 else:
-                    color = Game_square.light_color if (row + col) % 2 == 0 else Game_square.dark_color
+                    color = (
+                        Game_square.light_color
+                        if (row + col) % 2 == 0
+                        else Game_square.dark_color
+                    )
+                
+                pygame.draw.rect(self.screen, color, (x1, y1, sz, sz))
 
-                self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+                text_color = (
+                    Game_square.dark_color
+                    if (row + col) % 2 == 0
+                    else Game_square.light_color
+                )
+                label = font.render(sq.notation, True, text_color)
+                label_rect = label.get_rect(bottomleft=(x1 + 4, y1 + sz - 4))
+                self.screen.blit(label, label_rect)
 
                 piece = self.board[row][col]
                 if piece:
-                    self.canvas.create_image(
-                    x1 + self.square_size // 2,
-                    y1 + self.square_size // 2,
-                    image=piece.sprite,
-    )
-                    
-                
+                    sprite      = piece.sprite
+                    sprite_rect = sprite.get_rect(
+                        center=(x1 + sz // 2, y1 + sz // 2)
+                    )
+                    self.screen.blit(sprite, sprite_rect)
+
+        pygame.display.flip()
+
+
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((600, 600), pygame.RESIZABLE)
+    pygame.display.set_caption("Chess")
+
+    game = ChessGame(screen)
+
+    clock   = pygame.time.Clock()
+    running = True
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            elif event.type == pygame.VIDEORESIZE:
+                screen = pygame.display.set_mode(
+                    (event.w, event.h), pygame.RESIZABLE
+                )
+                game.screen = screen
+                game.on_resize(event.w, event.h)
+
+        game.draw_board()
+        clock.tick(60)
+
+    pygame.quit()
+
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    root.geometry("600x600")
-    ChessGame(root)
-    root.mainloop()
+    main()
