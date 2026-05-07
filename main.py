@@ -17,6 +17,30 @@ class Piece:
 class Pawn(Piece):
     PATHS = {"white": "assets/W_pawn.png", "black": "assets/B_pawn.png"}
 
+    def __init__(self, color: str):
+        super().__init__(color)
+        self.hasmoved = False
+    
+    def legal_moves(self, from_row, from_col):
+        if self.hasmoved:
+            Num_moves = 1
+        elif not self.hasmoved:
+            Num_moves = 2
+
+        moves = []
+
+        for i in range(Num_moves):
+            if self.color == "white":
+                moves.append((from_row - (i + 1), from_col))
+            elif self.color == "black":
+                moves.append((from_row + (i + 1), from_col))
+        
+        self.hasmoved = True
+        return moves
+
+
+
+
 class Bishop(Piece):
     PATHS = {"white": "assets/W_bishop.png", "black": "assets/B_bishop.png"}
 
@@ -174,6 +198,8 @@ class ChessGame:
         piece = self.board[from_row][from_col]
         target_piece = self.board[to_row][to_col]
         if target_piece is not None and piece.color == target_piece.color:
+            return False
+        elif (to_row, to_col) not in piece.legal_moves(from_row, from_col):
             return False
         return True
 
