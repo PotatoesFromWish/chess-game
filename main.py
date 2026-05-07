@@ -23,47 +23,49 @@ class Pawn(Piece):
     
     def get_legal_moves(self, from_row, from_col, board):
         moves = []
-        candidates = []
-        
-        if self.hasmoved:
-            Num_moves = 1
-        elif not self.hasmoved:
-            Num_moves = 2
+        directions = []
+        attacks = []
+        move_by = 2
 
-        for i in range(Num_moves):
-            if self.color == "white":
-                new_row = from_row - (i + 1)
-                if board[new_row][from_col] is None:
-                    candidates.append((new_row, from_col))
-                else:
-                    break
-            elif self.color == "black":
-                new_row = from_row + (i + 1)
-                if board[new_row][from_col] is None:
-                    candidates.append((new_row, from_col))
-                else:
-                    break
+        if not self.hasmoved:
+            move_by = 3
 
         if self.color == "white":
-            if board[from_row - 1][from_col - 1] is not None:
-                candidates.append((from_row - 1, from_col - 1))
-            if board[from_row - 1][from_col + 1] is not None:
-                candidates.append((from_row - 1, from_col + 1))
-        if self.color == "black":
-            if board[from_row + 1][from_col - 1] is not None:
-                candidates.append((from_row + 1, from_col - 1))
-            if board[from_row + 1][from_col + 1] is not None:
-                candidates.append((from_row + 1, from_col + 1))
+            directions.append((-1, 0))
+            if from_col > 0 and board[from_row - 1][from_col - 1] is not None:
+                attacks.append((-1, -1))
+            if from_col < 7 and board[from_row - 1][from_col + 1] is not None:
+                attacks.append((-1, 1))
+        elif self.color == "black":
+            directions.append((1, 0))
+            if from_col > 0 and board[from_row + 1][from_col - 1] is not None:
+                attacks.append((1, -1))
+            if from_col < 7 and board[from_row + 1][from_col + 1] is not None:
+                attacks.append((1, 1))
 
-        for row, col in candidates:
-            if 0 <= row <= board_size - 1 and 0 <= col <= board_size - 1:
-                if board[row][col] is self.color:
+
+
+
+        for row_step, col_step in directions:
+            for i in range(1, move_by):
+                row = from_row + row_step * i
+                col = from_col + col_step * i
+                if not (0 <= row <= 7 and 0 <= col <= 7):
                     break 
-                moves.append((row, col))  
-                break
+                if board[row][col] is None:
+                    moves.append((row, col))
+                else:
+                    break
         
-        self.hasmoved = True
+
+        for row_step, col_step in attacks:
+            row = from_row + row_step
+            col = from_col + col_step
+            moves.append((row, col))
+                
+
         return moves
+
 
 
 
@@ -73,6 +75,7 @@ class Bishop(Piece):
 
     def get_legal_moves(self, from_row, from_col, board):
         moves = []
+        move_by = board_size
 
         directions = [
             (-1, -1),  # up left
@@ -82,7 +85,7 @@ class Bishop(Piece):
         ]
 
         for row_step, col_step in directions:
-            for i in range(1, board_size):
+            for i in range(1, move_by):
                 row = from_row + row_step * i
                 col = from_col + col_step * i
                 if not (0 <= row <= 7 and 0 <= col <= 7):
@@ -104,6 +107,7 @@ class Rook(Piece):
 
     def get_legal_moves(self, from_row, from_col, board):
         moves = []
+        move_by = board_size
 
         directions = [
             (-1,  0),  # up
@@ -113,7 +117,7 @@ class Rook(Piece):
         ]
 
         for row_step, col_step in directions:
-            for i in range(1, board_size):
+            for i in range(1, move_by):
                 row = from_row + row_step * i
                 col = from_col + col_step * i
                 if not (0 <= row <= 7 and 0 <= col <= 7):
@@ -132,6 +136,7 @@ class Queen(Piece):
 
     def get_legal_moves(self, from_row, from_col, board):
         moves = []
+        move_by = board_size
 
         directions = [
             (-1,  0),  # up
@@ -145,7 +150,7 @@ class Queen(Piece):
         ]
 
         for row_step, col_step in directions:
-            for i in range(1, board_size):
+            for i in range(1, move_by):
                 row = from_row + row_step * i
                 col = from_col + col_step * i
                 if not (0 <= row <= 7 and 0 <= col <= 7):
@@ -165,6 +170,7 @@ class King(Piece):
 
     def get_legal_moves(self, from_row, from_col, board):
         moves = []
+        move_by = 2
 
         directions = [
             (-1,  0),  # up
@@ -180,7 +186,7 @@ class King(Piece):
 
 
         for row_step, col_step in directions:
-            for i in range(1, 1):
+            for i in range(1, move_by):
                 row = from_row + row_step * i
                 col = from_col + col_step * i
                 if not (0 <= row <= 7 and 0 <= col <= 7):
@@ -375,11 +381,15 @@ def main():
                             elif game.selected == (sq.row, sq.col):
                                 game.selected = None
                                 game.valid_moves = []
+
                             else:
-                            # second click, move to this square
+                                # second click, move to this square
                                 from_row, from_col = game.selected
+                                moving_piece = game.board[from_row][from_col]  # ← the piece being moved
                                 if game.legal_move(from_row, from_col, sq.row, sq.col):
                                     game.move_piece(from_row, from_col, sq.row, sq.col)
+                                    if isinstance(moving_piece, Pawn):
+                                        moving_piece.hasmoved = True
                                 game.selected = None
                                 game.valid_moves = []
 
