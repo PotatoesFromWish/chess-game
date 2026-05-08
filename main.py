@@ -1,6 +1,7 @@
 import pygame
 from PIL import Image
 
+board_size = 8
 
 class Piece:
     SPRITE = {}
@@ -14,12 +15,12 @@ class Piece:
             for i in range(1, move_by):
                 row = from_row + row_step * i
                 col = from_col + col_step * i
-                if not (0 <= row <= 7 and 0 <= col <= 7):
+                if not (0 <= row <= board_size - 1 and 0 <= col <= board_size - 1):
                     break 
-                if board[row][col] is None:
+                if  board[row][col] is None:
                     moves.append((row, col))
                 else:
-                    if board[row][col].color is not self.color:
+                    if board[row][col].color is not self.color and not isinstance(self, Pawn):
                         moves.append((row, col)) 
                     break
         return moves
@@ -69,10 +70,6 @@ class Pawn(Piece):
                 
 
         return moves
-
-
-
-
 
 class Bishop(Piece):
     PATHS = {"white": "assets/W_bishop.png", "black": "assets/B_bishop.png"}
@@ -159,13 +156,7 @@ class King(Piece):
             ( 1,  1),  # down right
         ]
 
-
-
         return self.move_validating(directions, move_by, from_row, from_col, board)
-
-
-
-board_size = 8
 
 def make_board() -> list:
     W, B = "white", "black"
