@@ -9,6 +9,7 @@ class Piece:
     def __init__(self, color: str):
         self.color = color
         self.has_moved = False
+        self.movement_enabled = True
 
     def move_validating(self, directions, move_by, from_row, from_col, board):
         moves = []
@@ -86,6 +87,8 @@ class Pawn(Piece):
                 moves.append((row, col))
 
         return moves
+
+
 
 class Bishop(Piece):
     PATHS = {"white": "assets/W_bishop.png", "black": "assets/B_bishop.png"}
@@ -192,11 +195,13 @@ def make_board() -> list:
 class Game_square:
     size = 600 // board_size
 
+
     light_color = "#EDE398"
     dark_color = "#431C07"
     highlight_color = "#AAD751"
     selected_color = "#4B9545"
     in_check_color = "#FF0000"
+    promotion_color = "#FFFFFF"
     files = "abcdefgh"
 
     def __init__(self, row: int, col: int):
@@ -230,10 +235,12 @@ class ChessGame:
                 if piece:
                     piece.square = self.squares[row][col]
 
-        self.selected    = None
+        self.promotion_squares = {}
+        self.selected = None
         self.previous_selected = None
         self.valid_moves = []
         self.turn = "white"
+        self.promotion_pending = None
 
         w, h = screen.get_size()
         Game_square.update_size(w, h)
@@ -268,19 +275,20 @@ class ChessGame:
             for col in range(board_size):
                 sq = self.squares[row][col]
                 x1, y1 = col * sz, row * sz
-                
 
                 if (row, col) == self.selected:
                     color = Game_square.selected_color
                 elif (row, col) in self.valid_moves:
                     color = Game_square.highlight_color
+                elif (row, col) in self.promotion_squares:
+                    color = Game_square.promotion_color
                 else:
                     color = (
                         Game_square.light_color
                         if (row + col) % 2 == 0
                         else Game_square.dark_color
                     )
-                
+
                 pygame.draw.rect(self.screen, color, (x1, y1, sz, sz))
 
                 text_color = (
@@ -292,15 +300,31 @@ class ChessGame:
                 label_rect = label.get_rect(bottomleft=(x1 + 4, y1 + sz - 4))
                 self.screen.blit(label, label_rect)
 
-                piece = self.board[row][col]
-                if piece:
-                    sprite      = piece.sprite
-                    sprite_rect = sprite.get_rect(
-                        center=(x1 + sz // 2, y1 + sz // 2)
-                    )
+                if (row, col) in self.promotion_squares:
+                    cls = self.promotion_squares[(row, col)]
+                    promoting_color = self.board[self.promotion_pending[0]][self.promotion_pending[1]].color
+                    sprite = cls.SPRITE[promoting_color]
+                    sprite_rect = sprite.get_rect(center=(x1 + sz // 2, y1 + sz // 2))
                     self.screen.blit(sprite, sprite_rect)
+                else:
+                    piece = self.board[row][col]
+                    if piece:
+                        sprite      = piece.sprite
+                        sprite_rect = sprite.get_rect(
+                            center=(x1 + sz // 2, y1 + sz // 2)
+                        )
+                        self.screen.blit(sprite, sprite_rect)
 
         pygame.display.flip()
+
+    def start_promotion(self, row, col):
+        self.promotion_pending = (row, col)
+        self.promotion_squares = {}
+        options = [Queen, Rook, Bishop, Horse]
+        direction = 1 if row == 0 else -1  # white promotes at row 0, go down; black at row 7, go up
+        for i, cls in enumerate(options):
+            target_row = row + direction * (i + 1)
+            self.promotion_squares[(target_row, col)] = cls
 
     def move_piece(self, from_row, from_col, to_row, to_col):
         piece = self.board[from_row][from_col]
@@ -321,6 +345,12 @@ class ChessGame:
 
         if isinstance(piece, Pawn) and abs(to_row - from_row) == 2:
             piece.has_moved_2 = True
+
+        if isinstance(piece, Pawn):
+            if piece.color == "white" and to_row == 0:
+                self.start_promotion(to_row, to_col)
+            if piece.color == "black" and to_row == board_size - 1:
+                self.start_promotion(to_row, to_col)
 
 
     def legal_move(self, from_row, from_col, to_row, to_col):
@@ -355,28 +385,38 @@ def main():
                 game.screen = screen
                 game.on_resize(event.w, event.h)
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                for row in game.squares:
-                    for sq in row:
-                        if sq.hitbox.collidepoint(event.pos):
-                            piece = game.board[sq.row][sq.col]
-                            if game.selected is None:
-                            # first click selects a piece
-                                if piece:
-                                    game.selected = (sq.row, sq.col)
-                                    game.valid_moves = piece.get_legal_moves(sq.row, sq.col, game.board)
-                            elif game.selected == (sq.row, sq.col):
-                                game.selected = None
-                                game.valid_moves = []
-
-                            else:
-                                # second click moves the piece to this square
-                                from_row, from_col = game.selected
-                                moving_piece = game.board[from_row][from_col] 
-                                if game.legal_move(from_row, from_col, sq.row, sq.col):
-                                    game.move_piece(from_row, from_col, sq.row, sq.col)
-                                    moving_piece.has_moved = True
-                                game.selected = None
-                                game.valid_moves = []
+                if game.promotion_pending is not None:
+                    for row in game.squares:
+                        for sq in row:
+                            if sq.hitbox.collidepoint(event.pos) and (sq.row, sq.col) in game.promotion_squares:
+                                pawn_row, pawn_col = game.promotion_pending
+                                chosen_cls = game.promotion_squares[(sq.row, sq.col)]
+                                promoting_color = game.board[pawn_row][pawn_col].color
+                                game.board[pawn_row][pawn_col] = chosen_cls(promoting_color)
+                                game.promotion_pending = None
+                                game.promotion_squares = {}
+                                game.turn = "black" if game.turn == "white" else "white"
+                else:
+                    for row in game.squares:
+                        for sq in row:
+                            if sq.hitbox.collidepoint(event.pos):
+                                piece = game.board[sq.row][sq.col]
+                                if game.selected is None:
+                                    if piece:
+                                        game.selected = (sq.row, sq.col)
+                                        game.valid_moves = piece.get_legal_moves(sq.row, sq.col, game.board)
+                                elif game.selected == (sq.row, sq.col):
+                                    game.selected = None
+                                    game.valid_moves = []
+                                else:
+                                    from_row, from_col = game.selected
+                                    moving_piece = game.board[from_row][from_col]
+                                    if moving_piece.movement_enabled:
+                                        if game.legal_move(from_row, from_col, sq.row, sq.col):
+                                            game.move_piece(from_row, from_col, sq.row, sq.col)
+                                            moving_piece.has_moved = True
+                                    game.selected = None
+                                    game.valid_moves = []
 
 
 
