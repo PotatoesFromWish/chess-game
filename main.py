@@ -3,13 +3,19 @@ from PIL import Image
 
 board_size = 8
 
+
 class Piece:
     SPRITE = {}
+    _id_counter = 1
 
     def __init__(self, color: str):
         self.color = color
         self.has_moved = False
         self.movement_enabled = True
+        self.id = Piece._id_counter
+        Piece._id_counter += 1
+        self.in_check = False
+
 
     def move_validating(self, directions, move_by, from_row, from_col, board):
         moves = []
@@ -25,6 +31,7 @@ class Piece:
                     if board[row][col].color is not self.color and not isinstance(self, Pawn):
                         moves.append((row, col)) 
                     break
+
         return moves
 
     @property
@@ -177,6 +184,8 @@ class King(Piece):
 
         return self.move_validating(directions, move_by, from_row, from_col, board)
 
+
+
 def make_board() -> list:
     W, B = "white", "black"
     back_row = [Rook, Horse, Bishop, Queen, King, Bishop, Horse, Rook]
@@ -237,17 +246,22 @@ class ChessGame:
 
         self.promotion_squares = {}
         self.selected = None
+        self.in_check = None
         self.previous_selected = None
         self.valid_moves = []
         self.turn = "white"
         self.promotion_pending = None
 
+        self.white_moves = []
+        self.black_moves = []
+
         w, h = screen.get_size()
         Game_square.update_size(w, h)
         self.square_size = Game_square.size
 
-
         self.reload_sprites()
+        
+        self.compute_all_moves()
 
     def on_resize(self, width: int, height: int):
         Game_square.update_size(width, height)
@@ -278,6 +292,8 @@ class ChessGame:
 
                 if (row, col) == self.selected:
                     color = Game_square.selected_color
+                elif (row, col) == self.in_check:
+                    color = Game_square.in_check_color
                 elif (row, col) in self.valid_moves:
                     color = Game_square.highlight_color
                 elif (row, col) in self.promotion_squares:
@@ -309,13 +325,26 @@ class ChessGame:
                 else:
                     piece = self.board[row][col]
                     if piece:
-                        sprite      = piece.sprite
+                        sprite = piece.sprite
                         sprite_rect = sprite.get_rect(
                             center=(x1 + sz // 2, y1 + sz // 2)
                         )
                         self.screen.blit(sprite, sprite_rect)
 
         pygame.display.flip()
+
+    def compute_all_moves(self):
+        self.white_moves = {}
+        self.black_moves = {}
+        for row in range(board_size):
+            for col in range(board_size):
+                piece = self.board[row][col]
+                if piece:
+                    moves = piece.get_legal_moves(row, col, self.board)
+                    if piece.color == "white":
+                        self.white_moves[piece.id] = moves
+                    else:
+                        self.black_moves[piece.id] = moves
 
     def start_promotion(self, row, col):
         self.promotion_pending = (row, col)
@@ -351,6 +380,8 @@ class ChessGame:
                 self.start_promotion(to_row, to_col)
             if piece.color == "black" and to_row == board_size - 1:
                 self.start_promotion(to_row, to_col)
+        
+        self.compute_all_moves()
 
 
     def legal_move(self, from_row, from_col, to_row, to_col):
@@ -359,8 +390,12 @@ class ChessGame:
 
         if (to_row, to_col) not in self.valid_moves:
             return False
-    
+        #elif self.in_check and not isinstance(piece, King):
+            #return False
+        #elif self.turn != piece.color:
+            #return False
         return True
+        
 
 
 def main():
@@ -403,8 +438,9 @@ def main():
                                 piece = game.board[sq.row][sq.col]
                                 if game.selected is None:
                                     if piece:
-                                        game.selected = (sq.row, sq.col)
-                                        game.valid_moves = piece.get_legal_moves(sq.row, sq.col, game.board)
+                                        if piece.color == game.turn:
+                                            game.selected = (sq.row, sq.col)
+                                            game.valid_moves = piece.get_legal_moves(sq.row, sq.col, game.board)
                                 elif game.selected == (sq.row, sq.col):
                                     game.selected = None
                                     game.valid_moves = []
@@ -414,14 +450,34 @@ def main():
                                     if moving_piece.movement_enabled:
                                         if game.legal_move(from_row, from_col, sq.row, sq.col):
                                             game.move_piece(from_row, from_col, sq.row, sq.col)
+
+                                            game.compute_all_moves()
+
+                                            for row in range(board_size):
+                                                for col in range(board_size):
+                                                    piece = game.board[row][col]
+                                                    if isinstance(piece, King):
+                                                        opponent_moves = game.black_moves if piece.color == "white" else game.white_moves
+                                                        is_attacked = any((row, col) in moves for moves in opponent_moves.values())
+                                                        if is_attacked:
+                                                            game.in_check = (row, col)
+                                                        else:
+                                                            game.in_check = None
+                                            
+                                            if game.turn == "white":
+                                                game.turn = "black"
+                                            elif game.turn == "black":
+                                                game.turn = "white"
+                                            
+
                                             moving_piece.has_moved = True
                                     game.selected = None
                                     game.valid_moves = []
 
 
 
-        game.draw_board()
-        clock.tick(60)
+        game.draw_board()         
+        clock.tick(120)
 
     pygame.quit()
 
