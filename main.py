@@ -206,11 +206,14 @@ def make_board() -> list:
 class Game_square:
     size = 600 // board_size
 
+    num_created_squares = 1
+
 
     light_color = "#EDE398"
     dark_color = "#431C07"
-    highlight_color = "#AAD751"
-    selected_color = "#4B9545"
+    highlight_color_light = "#AAD751"
+    highlight_color_dark = "#576E29"
+    selected_color = "#EDD11B"
     in_check_color = "#FF0000"
     promotion_color = "#FFFFFF"
     files = "abcdefgh"
@@ -219,6 +222,8 @@ class Game_square:
         self.row = row
         self.col = col
         self.notation = self.files[col] + str(board_size - row)
+        self.init_color = self.num_created_squares
+        self.num_created_squares += 1
 
     @classmethod
     def update_size(cls, width: int, height: int):
@@ -295,7 +300,11 @@ class ChessGame:
                 if (row, col) == self.selected:
                     color = Game_square.selected_color
                 elif (row, col) in self.valid_moves:
-                    color = Game_square.highlight_color
+                                        color = (
+                        Game_square.highlight_color_light
+                        if (row + col) % 2 == 0
+                        else Game_square.highlight_color_dark
+                    )
                 elif (row, col) == self.in_check:
                     color = Game_square.in_check_color
                 elif (row, col) in self.promotion_squares:
