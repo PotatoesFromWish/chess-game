@@ -57,10 +57,11 @@ class Pawn(Piece):
 
         if self.color == "white":
             directions.append((-1, 0))
-            if from_col > 0 and board[from_row - 1][from_col - 1] is not None:
-                attacks.append((-1, -1))
-            if from_col < 7 and board[from_row - 1][from_col + 1] is not None:
-                attacks.append((-1, 1))
+            if from_row - 1 >= 0: 
+                if from_col > 0 and board[from_row - 1][from_col - 1] is not None:
+                    attacks.append((-1, -1))
+                if from_col < 7 and board[from_row - 1][from_col + 1] is not None:
+                    attacks.append((-1, 1))
             if from_col > 0 and isinstance(board[from_row][from_col - 1], Pawn) and board[from_row][from_col - 1].has_moved_2:
                 attacks.append((-1, -1))
             if from_col < 7 and isinstance(board[from_row][from_col + 1], Pawn) and board[from_row][from_col + 1].has_moved_2:
@@ -68,10 +69,11 @@ class Pawn(Piece):
 
         elif self.color == "black":
             directions.append((1, 0))
-            if from_col > 0 and board[from_row + 1][from_col - 1] is not None:
-                attacks.append((1, -1))
-            if from_col < 7 and board[from_row + 1][from_col + 1] is not None:
-                attacks.append((1, 1))
+            if from_row + 1 <= 7: 
+                if from_col > 0 and board[from_row + 1][from_col - 1] is not None:
+                    attacks.append((1, -1))
+                if from_col < 7 and board[from_row + 1][from_col + 1] is not None:
+                    attacks.append((1, 1))
             if from_col > 0 and isinstance(board[from_row][from_col - 1], Pawn) and board[from_row][from_col - 1].has_moved_2:
                 attacks.append((1, -1))
             if from_col < 7 and isinstance(board[from_row][from_col + 1], Pawn) and board[from_row][from_col + 1].has_moved_2:
