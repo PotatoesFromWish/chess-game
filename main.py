@@ -1,5 +1,12 @@
 import pygame
 from PIL import Image
+import sys
+import os
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.dirname(__file__), relative_path)
 
 board_size = 8
 
@@ -262,7 +269,7 @@ class ChessGame:
 
     def load_sounds(self):
         for cls in (Pawn, Bishop, Horse, Rook, Queen, King):
-            cls.sound = pygame.mixer.Sound(cls.sound)
+            cls.sound = pygame.mixer.Sound(resource_path(cls.sound))
 
     def on_resize(self, width: int, height: int):
         Game_square.update_size(width, height)
@@ -274,7 +281,7 @@ class ChessGame:
         for cls in (Pawn, Bishop, Horse, Rook, Queen, King):
             cls.SPRITE = {}
             for color, path in cls.PATHS.items():
-                pil_img = Image.open(path).resize((sz, sz)).convert("RGBA")
+                pil_img = Image.open(resource_path(path)).resize((sz, sz)).convert("RGBA")
                 surface = pygame.image.fromstring(pil_img.tobytes(), pil_img.size, "RGBA").convert_alpha()
                 cls.SPRITE[color] = surface
 
