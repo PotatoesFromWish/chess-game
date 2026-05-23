@@ -35,6 +35,15 @@ jobs:
             --add-data "assets/sounds:assets/sounds" \
             main.py
 
+      - name: Rename executable
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            mv dist/main dist/chess-mac
+          else
+            mv dist/main.exe dist/chess-windows.exe
+          fi
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
