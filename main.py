@@ -521,6 +521,18 @@ def main():
                         game.board[pawn_row][pawn_col] = chosen_cls(promoting_color)
                         game.promotion_pending = None
                         game.promotion_squares = {}
+
+                        game.compute_all_moves()
+
+                        game.in_check = None
+                        for row in range(board_size):
+                            for col in range(board_size):
+                                p = game.board[row][col]
+                                if isinstance(p, King):
+                                    opp_moves = game.black_moves if p.color == "white" else game.white_moves
+                                    if any((row, col) in m for m in opp_moves.values()):
+                                        game.in_check = (row, col)
+
                         game.draw_board()
                         pygame.time.wait(500)
                         game.flipped = not game.flipped
