@@ -30,25 +30,45 @@ jobs:
       - name: Build with PyInstaller
         shell: bash
         run: |
-          pyinstaller --onefile --windowed \
-            --add-data "assets/sprites:assets/sprites" \
-            --add-data "assets/sounds:assets/sounds" \
-            main.py
-
-      - name: Rename executable
-        shell: bash
-        run: |
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            mv dist/main dist/chess-mac
+            pyinstaller --onefile --windowed \
+              --add-data "assets/sprites:assets/sprites" \
+              --add-data "assets/sounds:assets/sounds" \
+              --target-arch universal2 \
+              main.py
           else
-            mv dist/main.exe dist/chess-windows.exe
+            pyinstaller --onefile --windowed \
+              --add-data "assets/sprites;assets/sprites" \
+              --add-data "assets/sounds;assets/sounds" \
+              main.py
           fi
 
-      - name: Upload artifact
+      - name: Package macOS app
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd dist
+          zip -r chess-mac.zip main.app
+          mv chess-mac.zip ../chess-mac.zip
+          cd ..
+
+      - name: Rename Windows executable
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: mv dist/main.exe dist/chess-windows.exe
+
+      - name: Upload artifact (macOS)
+        if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: chess-${{ matrix.os }}
-          path: dist/
+          name: chess-macos-latest
+          path: chess-mac.zip
+
+      - name: Upload artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chess-windows-latest
+          path: dist/chess-windows.exe
 
   release:
     needs: build
