@@ -361,7 +361,7 @@ class ChessGame:
         pygame.draw.rect(self.screen, accent_color, banner_rect, width=3, border_radius=12)
  
 
-        title_font_size = max(24, banner_h // 2)
+        title_font_size = int(max(24, banner_h // 2 * 0.5))
         title_font = pygame.font.SysFont("Georgia", title_font_size, bold=True)
         title_surf = title_font.render(title_text, True, title_color)
         self.screen.blit(title_surf, title_surf.get_rect(centerx=w // 2, centery=banner_rect.centery - banner_h // 8))
