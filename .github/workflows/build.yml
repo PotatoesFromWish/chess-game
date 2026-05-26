@@ -31,10 +31,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            pyinstaller --onefile --windowed \
+            pyinstaller --onedir --windowed \
               --add-data "assets/sprites:assets/sprites" \
               --add-data "assets/sounds:assets/sounds" \
-              --target-arch universal2 \
               main.py
           else
             pyinstaller --onefile --windowed \
