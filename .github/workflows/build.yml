@@ -8,6 +8,7 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+#Creates the application for windows and macOS
 jobs:
   build:
     strategy:
@@ -42,6 +43,7 @@ jobs:
               main.py
           fi
 
+      #Packages and names the mac version of the app in a zip file
       - name: Package macOS app
         if: matrix.os == 'macos-latest'
         run: |
@@ -50,11 +52,13 @@ jobs:
           mv chess-mac.zip ../chess-mac.zip
           cd ..
 
+      #Names the windows version.
       - name: Rename Windows executable
         if: matrix.os == 'windows-latest'
         shell: bash
         run: mv dist/main.exe dist/chess-windows.exe
 
+      #Uploads the mac version to github
       - name: Upload artifact (macOS)
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
@@ -62,6 +66,7 @@ jobs:
           name: chess-macos-latest
           path: chess-mac.zip
 
+      #Uploads the windows version to github
       - name: Upload artifact (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
@@ -81,6 +86,7 @@ jobs:
         with:
           path: artifacts/
 
+      #Creates the github release
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
